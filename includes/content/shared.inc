@@ -6,18 +6,9 @@ $timings = array(
 
 
 //store a database object in the page object so it is easy to get to.
-$page->db = new cs_phpDB;
+$page->db = new cs_phpDB(constant('DB_DSN'), constant('DB_USERNAME'), constant('DB_PASSWORD'));
 
 $page->config = $siteConfig;
-$dbParams = array(
-	'host'		=> constant('CSBLOG_DB_HOST'),
-	'dbname'	=> constant('CSBLOG_DB_DBNAME'),
-	'port'		=> constant('CSBLOG_DB_PORT'),
-	'user'		=> constant('CSBLOG_DB_USER'),
-	'password'	=> constant('CSBLOG_DB_PASSWORD'),
-);
-$page->db->connect($dbParams);
-
 
 
 

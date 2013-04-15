@@ -1,53 +1,139 @@
-<?
+<?php
 
 /*
 **	does all of the including of various files; each script should 
 **		ONLY have to do require(../lib/includes.php) to work.
 */
 
-require_once("siteConfig.php");
+//Some things to make __autoload() go super fast...
+define('AUTOLOAD_HINTS', dirname(__FILE__) .'/class.hints');
+define('LIBDIR', dirname(__FILE__));
 
-#=====================================================================================================
-//all the standard template vars are below.  They're on the top to avoid any problems with them
-//	overriding script-specific values.
-#=====================================================================================================
-//$templateVars["variableName"]="value";
-//example: $templateVars["TITLE"]="Avsupport.com -- We like MUFFINS!!!";
-//replaces all instances of {TITLE} in the pages with "Avsupport.com -- We like MUFFINS!!!!!"
-
-//set the initial content for the site;
-
-$templateVars["domain"]		= $GLOBALS['DOMAIN'];
-$templateVars["PHP_SELF"]	= $_SERVER['SCRIPT_NAME'];
-$templateVars["REQUEST_URI"]	= $_SERVER['REQUEST_URI'];
-$templateVars["curDate"]	= date("F j, Y");
-$templateVars["curYear"]	= date("Y");
-$templateVars["curMonth"]	= date("m");
-$templateVars["timezone"]	= date("T");
-
-$templateVars["date"]		= date("F j, Y");
-$templateVars["time"]		= date("h:i a");
-$templateVars["page_section"]	= "Default";
-$templateVars["body"]		= "<BODY bgcolor='white' text='#666666' link='#006666' vlink='#006666' alink='#006666' 
-bgproperties='fixed'>";
-
-$templateVars["html_title"]	= "::: BuzzKill - Accept No Limitations :::";
-
-$templateVars["error_msg"]	= "";
-$templateVars["status_msg"]	= "";
-
-//magic to determine which template to use for content by default
-$templateVars['content']	= "content/". ereg_replace("^/", "", str_replace(".php", "", $_SERVER['PHP_SELF'])) ."_content.tmpl";
+### Set the default timezone...
+date_default_timezone_set("America/Chicago");
 
 
-//templateFiles["sectionName"]="filename";
-//example: $templateFiles["contact"]="contact.tmpl";
-//would read file contact.html into every place in the master template where it said {contact}
+//set the domain we're on into the session...
+if(isset($_SERVER['HTTP_HOST'])) {
+	$temp=explode(".",$_SERVER['HTTP_HOST']);
+	$GLOBALS['DOMAIN']=$temp[1];
+}
 
-//set the intitial look and meta information for the site
 
-$templateFiles["header"]	= "sections/main_header.tmpl";
-$templateFiles["footer"]	= "sections/main_footer.tmpl";
+require_once(dirname(__FILE__) .'/cs-content/__autoload.php');
+$configFile = dirname(__FILE__) .'/../rw/siteConfig.xml';
+if(file_exists(dirname(__FILE__) .'/../rw/test_siteConfig.xml')) {
+	$configFile = dirname(__FILE__) .'/../rw/test_siteConfig.xml';
+}
+$siteConfig = new cs_siteConfig($configFile, 'website');
+
+
+function exception_handler($exception) {
+	if(isset($_SERVER['SERVER_PROTOCOL'])) {
+		$showThis = file_get_contents(dirname(__FILE__) .'/../templates/system/404.shared.tmpl');
+		$showThis = str_replace('{details}', $exception->getMessage(), $showThis);
+	}
+	else {
+		$showThis = $exception->getMessage();
+	}
+	print $showThis;
+	exit;
+}
+
+set_exception_handler('exception_handler');
+
+
+function cs_debug_backtrace($printItForMe=NULL,$removeHR=NULL) {
+	$gf = new cs_globalFunctions;
+	if(is_null($printItForMe)) {
+		if(defined('DEBUGPRINTOPT')) {
+			$printItForMe = constant('DEBUGPRINTOPT');
+		}
+		elseif(isset($GLOBALS['DEBUGPRINTOPT'])) {
+			$printItForMe = $GLOBALS['DEBUGPRINTOPT'];
+		}
+	}
+	if(is_null($removeHR)) {
+		if(defined('DEBUGREMOVEHR')) {
+			$removeHR = constant('DEBUGREMOVEHR');
+		}
+		elseif(isset($GLOBALS['DEBUGREMOVEHR'])) {
+			$removeHR = $GLOBALS['DEBUGREMOVEHR'];
+		}
+	}
+//	if(function_exists("debug_print_backtrace")) {
+//		//it's PHP5.  use output buffering to capture the data.
+//		ob_start();
+//		debug_print_backtrace();
+//		
+//		$myData = ob_get_contents();
+//		ob_end_clean();
+//	}
+//	else {
+		//create our own backtrace data.
+		$stuff = debug_backtrace();
+		if(is_array($stuff)) {
+			$i=0;
+			foreach($stuff as $num=>$arr) {
+				if($arr['function'] !== "debug_print_backtrace") {
+					
+					$fromClass = '';
+					if(isset($arr['class']) && strlen($arr['class'])) {
+						$fromClass = $arr['class'] .'::';
+					}
+					
+					$args = '';
+					foreach($arr['args'] as $argData) {
+						$args = $gf->create_list($args, $gf->truncate_string($gf->debug_print($argData, 0, 1, false), 600), ', ');
+					}
+					
+					$fileDebug = "";
+					if(isset($arr['file'])) {
+						$fileDebug = " from file <u>". $arr['file'] ."</u>, line #". $arr['line'];
+					}
+					$tempArr[$num] = $fromClass . $arr['function'] .'('. $args .')'. $fileDebug;
+					
+				}
+			}
+			
+			array_reverse($tempArr);
+			$myData = null;
+			foreach($tempArr as $num=>$func) {
+				$myData = $gf->create_list($myData, "#". $i ." ". $func, "\n");
+				$i++;
+			}
+		}
+		else {
+			//nothing available...
+			$myData = $stuff;
+		}
+//	}
+	
+	$backTraceData = $gf->debug_print($myData, $printItForMe, $removeHR);
+	return($backTraceData);
+}//end cs_debug_backtrace()
+
+function cs_get_where_called() {
+	$stuff = debug_backtrace();
+//	foreach($stuff as $num=>$arr) {
+//		if($arr['function'] != __FUNCTION__ && $arr['function'] != 'debug_backtrace' && (!is_null($fromMethod) && $arr['function'] != $fromMethod)) {
+//			#$retval = $arr['function'];
+//			$fromClass = $arr['class'];
+//			if(!$fromClass) {
+//				$fromClass = '**GLOBAL**';
+//			}
+//			$retval = $arr['function'] .'{'. $fromClass .'}';
+//			break;
+//		} 
+//	}
+	$myData = $stuff[2];
+	$fromClass = $myData['class'];
+	if(!$fromClass) {
+		$fromClass = '**GLOBAL**';
+	}
+	$retval = $fromClass .'::'. $myData['function'];
+	return($retval);
+}
 
 
 ?>
