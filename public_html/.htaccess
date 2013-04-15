@@ -1,0 +1,16 @@
+php_value include_path ".:./lib:../lib/:../../lib"
+php_value output_handler ob_gzhandler
+
+<files content>
+        ForceType application/x-httpd-php
+</files>
+
+### redirect old pages...
+RedirectMatch ^/links.shtml		/content/links.php
+RedirectMatch ^/index.shtml		/content/index.php
+RedirectMatch ^/contact.shtml		/contact.php
+RedirectMatch ^/CVS(.*)			/content/index.php
+RedirectMatch (.*)/lib/(.*)		/content/index.php
+
+#### Error documents...
+ErrorDocument 404 /error_docs/404.php
