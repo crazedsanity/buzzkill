@@ -1,0 +1,12 @@
+[submodule "lib/cs-content"]
+	path = lib/cs-content
+	url = git@github.com:crazedsanity/cs-content.git
+[submodule "lib/cs-webapplibs"]
+	path = lib/cs-webapplibs
+	url = git@github.com:crazedsanity/cs-webapplibs.git
+[submodule "lib/cs-blogger"]
+	path = lib/cs-blogger
+	url = git@github.com:crazedsanity/cs-blogger.git
+[submodule "lib/cs-phpxml"]
+	path = lib/cs-phpxml
+	url = git@github.com:crazedsanity/cs-phpxml.git
